@@ -3,8 +3,8 @@ services:
     name: mathlms
     env: node
     plan: free
-    buildCommand: npm install && npx prisma generate && npx prisma db push && npm run build
-    startCommand: node --import tsx prisma/seed.ts && npm run start
+    buildCommand: npm install && npx prisma generate && npx prisma db push && npx prisma db seed && npm run build
+    startCommand: npm run start
     envVars:
       - key: DATABASE_URL
         fromDatabase:
