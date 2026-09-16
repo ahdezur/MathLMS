@@ -1,0 +1,131 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  password          String
+  name              String
+  role              String            // "ADMIN", "PROFESSOR", "STUDENT"
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  taughtCourses     Course[]          @relation("TeacherCourses")
+  enrollments       Enrollment[]
+  chapterProgresses ChapterProgress[]
+  quizSubmissions   QuizSubmission[]
+}
+
+model Course {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  code        String       @unique
+  teacherId   String?
+  teacher     User?        @relation("TeacherCourses", fields: [teacherId], references: [id], onDelete: SetNull)
+  units       Unit[]
+  enrollments Enrollment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Enrollment {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+
+  @@unique([studentId, courseId])
+}
+
+model Unit {
+  id        String    @id @default(uuid())
+  title     String
+  order     Int       @default(0)
+  courseId  String
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapters  Chapter[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Chapter {
+  id         String            @id @default(uuid())
+  title      String
+  content    String
+  order      Int               @default(0)
+  unitId     String
+  unit       Unit              @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  quizzes    Quiz[]
+  progresses ChapterProgress[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+model ChapterProgress {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  isRead    Boolean  @default(true)
+  readAt    DateTime @default(now())
+
+  @@unique([studentId, chapterId])
+}
+
+model Quiz {
+  id          String           @id @default(uuid())
+  title       String
+  description String?
+  chapterId   String
+  chapter     Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  questions   Question[]
+  submissions QuizSubmission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Question {
+  id                String             @id @default(uuid())
+  quizId            String
+  quiz              Quiz               @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  type              String             // "true_false", "single_choice", "multiple_choice", "matching", "inline_dropdown", "step_ordering"
+  statement         String
+  optionsJson       String             // Serialized options / column data
+  correctAnswerJson String             // Serialized correct answer definition
+  explanation       String?
+  order             Int                @default(0)
+  responses         QuestionResponse[]
+}
+
+model QuizSubmission {
+  id                String             @id @default(uuid())
+  quizId            String
+  quiz              Quiz               @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId         String
+  student           User               @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  score             Float
+  totalPoints       Float
+  submittedAt       DateTime           @default(now())
+  questionResponses QuestionResponse[]
+}
+
+model QuestionResponse {
+  id             String         @id @default(uuid())
+  submissionId   String
+  submission     QuizSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  userAnswerJson String
+  isCorrect      Boolean
+  earnedPoints   Float
+}
